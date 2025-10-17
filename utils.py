@@ -7,13 +7,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import re
 
-# Try to import Liger kernel
-try:
-    from liger_kernel.chunked_loss import LigerFusedLinearGRPOLoss
-    LIGER_AVAILABLE = True
-except ImportError:
-    LIGER_AVAILABLE = False
-    LigerFusedLinearGRPOLoss = None
 
 ####################
 ## MISC FUNCTIONS ##

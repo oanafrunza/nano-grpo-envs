@@ -21,22 +21,6 @@ def get_llm_tokenizer(model_name: str, use_liger_model: bool = False) -> tuple[P
             - The loaded language model
             - The configured tokenizer for that model
     """
-    # if use_liger_model:
-    #     model = AutoLigerKernelForCausalLM.from_pretrained(
-    #         model_name,
-    #         dtype=torch.bfloat16,
-    #         attn_implementation="flash_attention_2",
-    #         use_cache=False,
-    #         device_map="auto"
-    #     )
-    # else:
-    #     model = AutoModelForCausalLM.from_pretrained(
-    #         model_name,
-    #         dtype=torch.bfloat16,
-    #         attn_implementation="flash_attention_2",
-    #         use_cache=False,
-    #         device_map="auto"
-    #     )
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         dtype=torch.bfloat16,
