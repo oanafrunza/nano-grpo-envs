@@ -66,6 +66,8 @@ def extract_training_metrics(log):
     rewards = []
     format_rewards = []
     correctness = []
+    num_masked_correct = []
+    effective_masks_avg = []
     
     for step_str, step_data in log['steps'].items():
         if 'train' not in step_data:
@@ -87,6 +89,13 @@ def extract_training_metrics(log):
         rewards.append(avg_total_reward)
         format_rewards.append(avg_format)
         correctness.append(avg_correct)
+
+        # Masking metrics
+        num_masked_correct.append(train_data.get('num_masked_correct', 0))
+        if gens:
+            effective_masks_avg.append(np.mean([g.get('effective_mask', 1.0) for g in gens]))
+        else:
+            effective_masks_avg.append(1.0)
     
     return {
         'steps': np.array(steps),
@@ -95,6 +104,8 @@ def extract_training_metrics(log):
         'rewards': np.array(rewards),
         'format_rewards': np.array(format_rewards),
         'correctness': np.array(correctness),
+        'num_masked_correct': np.array(num_masked_correct),
+        'effective_masks_avg': np.array(effective_masks_avg),
     }
 
 
@@ -257,26 +268,16 @@ def create_training_plots(train_metrics, output_path, args_dict):
     ax5.spines['top'].set_visible(False)
     ax5.spines['right'].set_visible(False)
     
-    # 6. Combined view
+    # 6. Masking dynamics
     ax6 = plt.subplot(2, 3, 6)
-    # Normalize metrics to 0-1 for comparison
-    losses_norm = (train_metrics['losses'] - train_metrics['losses'].min()) / (train_metrics['losses'].max() - train_metrics['losses'].min() + 1e-8)
-    rewards_norm = train_metrics['rewards'] / (train_metrics['rewards'].max() + 1e-8)
-    correct_norm = train_metrics['correctness']
-    
-    # Smooth and align lengths
-    losses_smooth = smooth(losses_norm, 10)
-    rewards_smooth = smooth(rewards_norm, 10)
-    correct_smooth = smooth(correct_norm, 10)
-    steps_smooth = steps[:len(losses_smooth)]
-    
-    ax6.plot(steps_smooth, losses_smooth, color=COLORS['primary'], linewidth=2, label='Loss (norm)', alpha=0.7)
-    ax6.plot(steps_smooth, rewards_smooth, color=COLORS['tertiary'], linewidth=2, label='Reward (norm)', alpha=0.7)
-    ax6.plot(steps_smooth, correct_smooth, color=COLORS['quaternary'], linewidth=2, label='Correctness', alpha=0.7)
+    masks_smooth = smooth(train_metrics['effective_masks_avg'], 10)
+    steps_smooth = steps[:len(masks_smooth)]
+    ax6.plot(steps, train_metrics['num_masked_correct'], color=COLORS['quaternary'], linewidth=2, label='Num Masked Correct', alpha=0.7)
+    ax6.plot(steps_smooth, masks_smooth, color=COLORS['primary'], linewidth=2, label='Avg Effective Mask', alpha=0.7)
     ax6.set_xlabel('Training Step')
-    ax6.set_ylabel('Normalized Metrics')
-    ax6.set_title('Training Overview (Normalized)', fontweight='bold', pad=10)
-    ax6.legend(loc='right', framealpha=0.9)
+    ax6.set_ylabel('Masking Metrics')
+    ax6.set_title('Reward Masking Dynamics', fontweight='bold', pad=10)
+    ax6.legend(loc='upper right', framealpha=0.9)
     ax6.spines['top'].set_visible(False)
     ax6.spines['right'].set_visible(False)
     

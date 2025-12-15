@@ -8,7 +8,7 @@ dependencies = [
     "accelerate>=1.10.1",
     "deepspeed>=0.18.0",
     "fastapi>=0.119.0",
-    "flash-attn>=2.8.3",
+    "flash-attn==2.8.3",
     "liger-kernel>=0.6.2",
     "reasoning-gym>=0.1.24",
     "tqdm>=4.67.1",

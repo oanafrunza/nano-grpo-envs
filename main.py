@@ -14,6 +14,7 @@ and fused GRPO loss for local training.
 """
 
 import os
+import math
 import json
 import torch
 import random
@@ -241,6 +242,76 @@ def compute_grpo_loss(model, prompt_completion_ids, prompt_ids, completion_ids, 
     return loss
 
 
+def _build_reward_mask(correct_flags, step, args):
+    """
+    Build a boolean mask (1 keep reward, 0 mask reward) for each sample.
+    Strategies:
+      - none: keep all rewards
+      - every_n: for correct answers, mask every N-th correct at the batch level
+      - prob_p: for correct answers, mask with probability p
+      - cosine: time-based schedule mask fraction f(step)=0.5*(1+cos(2π step / period)) * max_mask_frac
+      - round_robin_k: partition chains into k buckets and mask one bucket per step (rotating)
+
+    Masking applies only to correct answers to avoid punishing incorrect ones further.
+    """
+    strategy = getattr(args, "reward_mask_strategy", "none")
+    if strategy == "none":
+        return torch.ones(len(correct_flags), dtype=torch.float32)
+
+    # Convert to tensor for convenience
+    correct_t = torch.tensor(correct_flags, dtype=torch.float32)
+
+    if strategy == "every_n":
+        n = max(1, int(getattr(args, "reward_mask_every_n", 10)))
+        mask = torch.ones_like(correct_t)
+        # Mask every N-th correct within this batch (stable ordering)
+        idx = 0
+        for i, c in enumerate(correct_t):
+            if c.item() == 1.0:
+                idx += 1
+                if idx % n == 0:
+                    mask[i] = 0.0
+        return mask
+
+    if strategy == "prob_p":
+        p = float(getattr(args, "reward_mask_prob", 0.1))
+        rand = torch.rand_like(correct_t)
+        # If correct and rand < p -> mask
+        mask = torch.where((correct_t == 1.0) & (rand < p), torch.zeros_like(correct_t), torch.ones_like(correct_t))
+        return mask
+
+    if strategy == "cosine":
+        period = max(1, int(getattr(args, "reward_mask_period", 100)))
+        max_frac = float(getattr(args, "reward_mask_max_frac", 0.5))
+        # Fraction to mask this step
+        frac = 0.5 * (1.0 + torch.cos(torch.tensor(2.0 * torch.pi * (step % period) / period))) * max_frac
+        # Compute how many correct items to mask
+        num_correct = int(correct_t.sum().item())
+        num_to_mask = int(round(frac.item() * num_correct))
+        mask = torch.ones_like(correct_t)
+        if num_to_mask > 0:
+            # Deterministic selection: take first num_to_mask correct examples
+            count = 0
+            for i, c in enumerate(correct_t):
+                if c.item() == 1.0 and count < num_to_mask:
+                    mask[i] = 0.0
+                    count += 1
+        return mask
+
+    if strategy == "round_robin_k":
+        k = max(1, int(getattr(args, "reward_mask_round_robin_k", 4)))
+        bucket = step % k
+        # Assign samples to buckets by position modulo k
+        mask = torch.ones_like(correct_t)
+        for i, c in enumerate(correct_t):
+            if c.item() == 1.0 and (i % k) == bucket:
+                mask[i] = 0.0
+        return mask
+
+    # Fallback
+    return torch.ones(len(correct_flags), dtype=torch.float32)
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Nano GRPO with reasoning_gym composite datasets")
@@ -303,6 +374,29 @@ def parse_args():
     parser.add_argument("--eval-names", nargs="+", default=["leg_counting", "family_relationships", "coin_flip"], help="Eval dataset names")
     parser.add_argument("--eval-weights", nargs="+", type=float, default=[1/3, 1/3, 1/3], help="Eval dataset weights")
     parser.add_argument("--eval-size", type=int, default=60, help="Eval dataset size")
+
+    # Reward masking (discipline of withholding rewards for some correct answers)
+    parser.add_argument("--reward_mask_strategy", type=str, default="none", choices=["none","every_n","prob_p","cosine","round_robin_k"], help="Strategy to mask rewards for correct answers")
+    parser.add_argument("--reward_mask_every_n", type=int, default=10, help="For every_n: mask every N-th correct example")
+    parser.add_argument("--reward_mask_prob", type=float, default=0.1, help="For prob_p: probability of masking a correct reward")
+    parser.add_argument("--reward_mask_period", type=int, default=100, help="For cosine: period in steps for cosine schedule")
+    parser.add_argument("--reward_mask_max_frac", type=float, default=0.5, help="For cosine: maximum fraction of correct rewards to mask")
+    parser.add_argument("--reward_mask_round_robin_k", type=int, default=4, help="For round_robin_k: number of buckets to rotate masking across")
+    parser.add_argument("--reward_mask_weight", type=float, default=0.0, help="Scale for masked correct rewards (0.0 = drop, 1.0 = keep)")
+
+    # Multi-reward weights (combine components explicitly)
+    parser.add_argument("--correctness_weight", type=float, default=1.0, help="Weight for correctness reward component")
+    parser.add_argument("--format_weight", type=float, default=1.0, help="Weight for formatting reward component")
+
+    # Full-correct zeroing (set reward to 0 for fully-correct samples occasionally)
+    parser.add_argument("--full_correct_zero_strategy", type=str, default="none", choices=["none","every_n","prob_p","round_robin_k","cosine"], help="Strategy to zero rewards for fully-correct samples")
+    parser.add_argument("--full_correct_zero_prob", type=float, default=0.1, help="Probability to zero fully-correct rewards (prob_p)")
+    parser.add_argument("--full_correct_zero_every_n", type=int, default=10, help="Every N-th fully-correct gets zeroed (every_n)")
+    parser.add_argument("--full_correct_zero_round_robin_k", type=int, default=4, help="Buckets for round-robin fully-correct zeroing")
+    parser.add_argument("--full_correct_zero_period", type=int, default=200, help="Cosine period for fully-correct zeroing")
+    parser.add_argument("--full_correct_zero_max_frac", type=float, default=0.3, help="Cosine max fraction to zero (fully-correct)")
+    parser.add_argument("--format_full_threshold", type=float, default=0.9, help="Formatting threshold to consider sample fully-correct")
+    parser.add_argument("--format_binary_threshold", type=float, default=None, help="If set, binarize formatting: 1 if format>=threshold else 0")
 
     return parser.parse_args()
 
@@ -408,8 +502,67 @@ if __name__ == "__main__":
         format_rewards = [utils.check_format(t, args.think_tag, args.answer_tag) for t in completions_text]
         
         # Combine correctness and format rewards (equal weight)
-        total_rewards = [c + f for c, f in zip(correctness, format_rewards)]
-        rewards = torch.tensor(total_rewards, device=model.device)
+        # Compute base reward components
+        correctness_t = torch.tensor(correctness, device=model.device, dtype=torch.float32)
+        format_t = torch.tensor(format_rewards, device=model.device, dtype=torch.float32)
+        # Optional: binarize formatting reward
+        fbin_thresh = getattr(args, "format_binary_threshold", None)
+        if fbin_thresh is not None:
+            format_t = (format_t >= float(fbin_thresh)).float()
+
+        # Apply reward masking ONLY to correctness component
+        reward_keep_mask = _build_reward_mask(correct_flags=correctness, step=step, args=args).to(model.device)
+        reward_mask_weight = float(getattr(args, "reward_mask_weight", 0.0))
+        effective_mask = reward_keep_mask + (1.0 - reward_keep_mask) * reward_mask_weight
+        correctness_masked = correctness_t * effective_mask
+
+        # Multi-reward combiner: weights for components (future-proof)
+        # By default: correctness_weight=1.0, format_weight=1.0
+        correctness_weight = float(getattr(args, "correctness_weight", 1.0))
+        format_weight = float(getattr(args, "format_weight", 1.0))
+
+        # Optional per-component masking flags (extendable): currently we only mask correctness
+        # If needed: format_mask_flag = getattr(args, "mask_format", False)
+
+        rewards = correctness_weight * correctness_masked + format_weight * format_t
+
+        # Full-correct zeroing: occasionally set total reward to 0 when correctness==1 and format>=threshold
+        def _build_full_correct_zero_mask(step: int, args):
+            strat = getattr(args, "full_correct_zero_strategy", "none")
+            if strat == "none":
+                return 1.0
+            if strat == "every_n":
+                n = max(1, int(getattr(args, "full_correct_zero_every_n", 10)))
+                return 0.0 if (step % n == 0) else 1.0
+            if strat == "prob_p":
+                p = max(0.0, min(1.0, float(getattr(args, "full_correct_zero_prob", 0.1))))
+                return 0.0 if random.random() < p else 1.0
+            if strat == "round_robin_k":
+                k = max(2, int(getattr(args, "full_correct_zero_round_robin_k", 4)))
+                return 0.0 if ((step % k) == 0) else 1.0
+            if strat == "cosine":
+                period = max(1, int(getattr(args, "full_correct_zero_period", 200)))
+                max_frac = max(0.0, min(1.0, float(getattr(args, "full_correct_zero_max_frac", 0.3))))
+                phase = (step % period) / float(period)
+                frac = 0.5 * (1.0 - math.cos(2.0 * math.pi * phase)) * max_frac
+                return 0.0 if random.random() < frac else 1.0
+            return 1.0
+
+        # Determine fully-correct flags
+        format_full_thresh = float(getattr(args, "format_full_threshold", 0.9))
+        is_fully_correct = (correctness_t >= 0.999) & (format_t >= format_full_thresh)
+        # Build keep mask value (scalar per step) then expand per sample where fully-correct
+        full_keep_scalar = _build_full_correct_zero_mask(step, args)
+        full_keep_mask = torch.ones_like(rewards)
+        full_keep_mask[is_fully_correct] = full_keep_scalar
+        # Apply full-correct zeroing to combined rewards
+        rewards = rewards * full_keep_mask
+        total_rewards = (correctness_t + format_t).tolist()
+        # Multi-reward weights (combine components explicitly)
+        # parser.add_argument("--correctness_weight", type=float, default=1.0, help="Weight for correctness reward component")
+        # parser.add_argument("--format_weight", type=float, default=1.0, help="Weight for formatting reward component")
+        # Apply reward masking to correct answers per strategy
+        # (already applied above)
 
         # Advantages
         grouped = rewards.view(-1, args.num_chains)
@@ -479,16 +632,42 @@ if __name__ == "__main__":
                     "extracted_answer": ea,
                     "correct": int(c),
                     "format_reward": float(f),
-                    "total_reward": float(tr)
-                } for t, ea, c, f, tr in zip(completions_text, extracted_answers, correctness, format_rewards, total_rewards)
+                    "total_reward": float(tr),
+                    "reward_kept": int(rkm)
+                } for t, ea, c, f, tr, rkm, em in zip(
+                    completions_text,
+                    extracted_answers,
+                    correctness,
+                    format_rewards,
+                    total_rewards,
+                    reward_keep_mask.tolist(),
+                    effective_mask.tolist()
+                )
             ],
             "loss": loss.item(),
             "lr": scheduler.get_last_lr()[0],
+            "num_masked_correct": int((1.0 - reward_keep_mask).sum().item()),
+            "reward_mask_strategy": getattr(args, "reward_mask_strategy", "none"),
+            "reward_mask_weight": reward_mask_weight,
+            "full_correct_zero_strategy": getattr(args, "full_correct_zero_strategy", "none"),
+            "num_full_correct_zeroed": int(((is_fully_correct.float() * (1.0 - full_keep_mask))).sum().item()),
         }
 
         if args.use_wandb:
             import wandb
-            wandb.log({"train/loss": loss.item(), "lr": scheduler.get_last_lr()[0]}, step=step)
+            # Aggregate simple per-step averages for visibility in W&B
+            avg_format = float(format_t.mean().item())
+            avg_correct = float(correctness_t.mean().item())
+            avg_total_reward = float(rewards.mean().item())
+            wandb.log({
+                "train/loss": loss.item(),
+                "lr": scheduler.get_last_lr()[0],
+                "train/avg_format_reward": avg_format,
+                "train/avg_correctness": avg_correct,
+                "train/avg_total_reward": avg_total_reward,
+                "train/num_masked_correct": run_log["steps"][step]["train"]["num_masked_correct"],
+                "train/num_full_correct_zeroed": run_log["steps"][step]["train"]["num_full_correct_zeroed"],
+            }, step=step)
 
         # Periodic evaluation with pass@k
         if step % args.eval_every == 0 and eval_ds is not None:
@@ -604,7 +783,8 @@ if __name__ == "__main__":
                 import wandb
                 wandb.log({
                     f"eval/pass_at_{args.pass_at_k}": avg_pass_at_k,
-                    "eval/avg_format_reward": avg_format
+                    "eval/avg_format_reward": avg_format,
+                    "eval/num_eval_problems": eval_count,
                 }, step=step)
 
         # Periodic model saving

@@ -1,3 +1,90 @@
+## Reward Masking & Zeroing
+
+This repo includes disciplined mechanisms to occasionally withhold rewards to encourage exploration and robustness. You can combine or run them independently.
+
+### Implementations
+- **Correctness Masking (component-level):** Applies a keep/drop mask only to the correctness reward component. Formatting is left untouched.
+  - `--reward_mask_strategy {none,every_n,prob_p,cosine,round_robin_k}`
+  - `--reward_mask_weight <float>`: masked-correct rewards are scaled by this weight (0.0 = drop, 1.0 = keep, 0.5 = half).
+  - Tunables by strategy:
+    - `every_n`: `--reward_mask_every_n <int>`
+    - `prob_p`: `--reward_mask_prob <float>`
+    - `cosine`: `--reward_mask_period <int>`, `--reward_mask_max_frac <float>`
+    - `round_robin_k`: `--reward_mask_round_robin_k <int>`
+
+- **Full-Correct Zeroing (combined reward-level):** Occasionally set the entire combined reward (correctness + formatting) to zero, but only when the sample is fully correct.
+  - `--full_correct_zero_strategy {none,every_n,prob_p,cosine,round_robin_k}`
+  - Tunables by strategy:
+    - `every_n`: `--full_correct_zero_every_n <int>`
+    - `prob_p`: `--full_correct_zero_prob <float>`
+    - `cosine`: `--full_correct_zero_period <int>`, `--full_correct_zero_max_frac <float>`
+    - `round_robin_k`: `--full_correct_zero_round_robin_k <int>`
+  - Definition of “fully-correct”:
+    - Correctness must be 1.
+    - Formatting must be above `--format_full_threshold` (default `0.9`).
+
+- **Formatting Reward Mode:**
+  - Graded (default): formatting score in `[0,1]`.
+  - Binary: set `--format_binary_threshold` (e.g., `1.0`) to convert formatting to `0/1` before combining.
+
+- **Reward Weights:** Combine components explicitly.
+  - `--correctness_weight <float>`
+  - `--format_weight <float>`
+
+### Baseline Recipes
+- Strict formatting + every 10 zeroing of fully-correct:
+```bash
+python -u projects/nano-grpo-envs/main.py \
+  --output_dir exp_output/baseline_strict_fullzero_every10 \
+  --train-size 2000 --eval-size 60 \
+  --reward_mask_strategy none \
+  --correctness_weight 1.0 --format_weight 1.0 \
+  --format_binary_threshold 1.0 \
+  --full_correct_zero_strategy every_n \
+  --full_correct_zero_every_n 10 \
+  --format_full_threshold 1.0
+```
+
+- Soft correctness-only masking (no hard zeroing):
+```bash
+python -u projects/nano-grpo-envs/main.py \
+  --output_dir exp_output/softmask_every10_wt05 \
+  --train-size 2000 --eval-size 60 \
+  --reward_mask_strategy every_n \
+  --reward_mask_every_n 10 \
+  --reward_mask_weight 0.5 \
+  --correctness_weight 1.0 --format_weight 1.2 \
+  --format_binary_threshold 1.0 \
+  --full_correct_zero_strategy none \
+  --format_full_threshold 1.0
+```
+
+- Round-robin zeroing (distributes zeroing across steps):
+```bash
+python -u projects/nano-grpo-envs/main.py \
+  --output_dir exp_output/fullzero_roundrobin_k4_strict \
+  --train-size 2000 --eval-size 60 \
+  --reward_mask_strategy none \
+  --correctness_weight 1.0 --format_weight 1.2 \
+  --format_binary_threshold 1.0 \
+  --full_correct_zero_strategy round_robin_k \
+  --full_correct_zero_round_robin_k 4 \
+  --format_full_threshold 1.0
+```
+
+### Visualize & Compare
+- Visualize a run (plots saved to the run directory):
+```bash
+python -u projects/nano-grpo-envs/visualize_results.py --output_dir exp_output/your_run_dir
+```
+
+- Compare two runs:
+```bash
+python -u projects/nano-grpo-envs/compare_runs.py \
+  --run_a exp_output/runA \
+  --run_b exp_output/runB
+```
+
 # Nano GRPO with Reasoning Gym
 
 A barebones, fast implementation of GRPO for training language models on reasoning tasks. This is a modernization of my previous [DeepSeekRL-Extended](https://github.com/brendanhogan/DeepSeekRL-Extended) repository - taking the simple but slow GRPO implementation and making it production-ready with modern optimizations.
@@ -97,6 +184,15 @@ uv run main.py --use_vllm --use_liger
 - `--epsilon_low`, `--epsilon_high`: Clipping parameters for Liger loss
 - `--loss_type`: Liger loss type (default: "dr_grpo")
 
+### Reward Masking (Withhold Correct Rewards)
+- `--reward_mask_strategy`: `none | every_n | prob_p | cosine | round_robin_k`
+- `--reward_mask_every_n`: For `every_n`, mask every N-th correct example
+- `--reward_mask_prob`: For `prob_p`, probability to mask a correct reward
+- `--reward_mask_period`: For `cosine`, period (steps) of cosine schedule
+- `--reward_mask_max_frac`: For `cosine`, max fraction of correct rewards masked
+- `--reward_mask_round_robin_k`: For `round_robin_k`, number of buckets rotated
+- `--reward_mask_weight`: Scale for masked rewards (0.0 = drop, 1.0 = keep)
+
 ## Output Files
 
 - `output/run_log.json`: Complete training log with all examples
@@ -146,6 +242,9 @@ This is designed as a foundation for rapid experimentation. I'm interested in te
     }
   ],
   "loss": 0.023,
+  "num_masked_correct": 3,
+  "reward_mask_strategy": "prob_p",
+  "reward_mask_weight": 0.0,
   "eval_metrics": {
     "accuracy": 85.0,
     "avg_format_reward": 0.35
