@@ -162,24 +162,54 @@ class VLLMClient:
                 - `logprobs`: List of lists of log probabilities for each token
         """
         url = f"{self.base_url}/generate/"
-        response = self.session.post(
-            url,
-            json={
-                "prompts": prompts,
-                "n": n,
-                "repetition_penalty": repetition_penalty,
-                "temperature": temperature,
-                "top_p": top_p,
-                "top_k": top_k,
-                "min_p": min_p,
-                "max_tokens": max_tokens,
-                "guided_decoding_regex": guided_decoding_regex,
-            },
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Request failed: {response.status_code}, {response.text}")
+        # Retry on transient connection issues from vLLM server
+        max_retries = 5
+        backoff = 2.0
+        last_exc: Exception | None = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self.session.post(
+                    url,
+                    json={
+                        "prompts": prompts,
+                        "n": n,
+                        "repetition_penalty": repetition_penalty,
+                        "temperature": temperature,
+                        "top_p": top_p,
+                        "top_k": top_k,
+                        "min_p": min_p,
+                        "max_tokens": max_tokens,
+                        "guided_decoding_regex": guided_decoding_regex,
+                    },
+                    timeout=120,
+                )
+                if response.status_code == 200:
+                    return response.json()
+                # Retry on typical transient server errors
+                if response.status_code in (502, 503, 504):
+                    raise ConnectionError(f"vLLM transient error {response.status_code}: {response.text}")
+                # Non-retriable error
+                raise Exception(f"Request failed: {response.status_code}, {response.text}")
+            except Exception as e:
+                last_exc = e
+                # Reset session to clear broken connections
+                try:
+                    self.session.close()
+                except Exception:
+                    pass
+                self.session = requests.Session()
+                # Quick health check before retrying
+                try:
+                    requests.get(f"{self.base_url}/health", timeout=5)
+                except Exception:
+                    pass
+                if attempt < max_retries:
+                    time.sleep(backoff)
+                    backoff *= 1.5
+                else:
+                    break
+        # If we reach here, retries exhausted
+        raise last_exc if last_exc is not None else Exception("vLLM generate failed without exception")
 
     def chat(
         self,
@@ -201,28 +231,52 @@ class VLLMClient:
         Generates completions for the provided prompts.
         """
         url = f"{self.base_url}/chat/"
-        response = self.session.post(
-            url,
-            json={
-                "messages": messages,
-                "n": n,
-                "repetition_penalty": repetition_penalty,
-                "temperature": temperature,
-                "top_p": top_p,
-                "top_k": top_k,
-                "min_p": min_p,
-                "max_tokens": max_tokens,
-                "guided_decoding_regex": guided_decoding_regex,
-                "stop": stop,
-                "include_stop_str_in_output": include_stop_str_in_output,
-                "skip_special_tokens": skip_special_tokens,
-                "spaces_between_special_tokens": spaces_between_special_tokens,
-            },
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Request failed: {response.status_code}, {response.text}")
+        max_retries = 5
+        backoff = 2.0
+        last_exc: Exception | None = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = self.session.post(
+                    url,
+                    json={
+                        "messages": messages,
+                        "n": n,
+                        "repetition_penalty": repetition_penalty,
+                        "temperature": temperature,
+                        "top_p": top_p,
+                        "top_k": top_k,
+                        "min_p": min_p,
+                        "max_tokens": max_tokens,
+                        "guided_decoding_regex": guided_decoding_regex,
+                        "stop": stop,
+                        "include_stop_str_in_output": include_stop_str_in_output,
+                        "skip_special_tokens": skip_special_tokens,
+                        "spaces_between_special_tokens": spaces_between_special_tokens,
+                    },
+                    timeout=120,
+                )
+                if response.status_code == 200:
+                    return response.json()
+                if response.status_code in (502, 503, 504):
+                    raise ConnectionError(f"vLLM transient error {response.status_code}: {response.text}")
+                raise Exception(f"Request failed: {response.status_code}, {response.text}")
+            except Exception as e:
+                last_exc = e
+                try:
+                    self.session.close()
+                except Exception:
+                    pass
+                self.session = requests.Session()
+                try:
+                    requests.get(f"{self.base_url}/health", timeout=5)
+                except Exception:
+                    pass
+                if attempt < max_retries:
+                    time.sleep(backoff)
+                    backoff *= 1.5
+                else:
+                    break
+        raise last_exc if last_exc is not None else Exception("vLLM chat failed without exception")
 
     def init_communicator(self, device=None):
         """

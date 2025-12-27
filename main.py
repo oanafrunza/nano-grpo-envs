@@ -262,14 +262,15 @@ def _build_reward_mask(correct_flags, step, args):
     correct_t = torch.tensor(correct_flags, dtype=torch.float32)
 
     if strategy == "every_n":
+        # Stateful across steps: keep a running count of correct samples seen
+        if not hasattr(args, "_correct_seen"):
+            args._correct_seen = 0
         n = max(1, int(getattr(args, "reward_mask_every_n", 10)))
         mask = torch.ones_like(correct_t)
-        # Mask every N-th correct within this batch (stable ordering)
-        idx = 0
         for i, c in enumerate(correct_t):
             if c.item() == 1.0:
-                idx += 1
-                if idx % n == 0:
+                args._correct_seen += 1
+                if args._correct_seen % n == 0:
                     mask[i] = 0.0
         return mask
 
@@ -357,6 +358,8 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=7111994, help="Random seed")
     parser.add_argument("--eval_every", type=int, default=20, help="Run evaluation every N steps")
     parser.add_argument("--save_every", type=int, default=50, help="Save model checkpoint every N steps")
+    parser.add_argument("--disable_checkpoint_saving", action="store_true", help="Disable saving intermediate checkpoints to save disk space")
+    parser.add_argument("--save_only_last", action="store_true", help="Only save a single final checkpoint at the end of training")
     
     # Evaluation
     parser.add_argument("--num_completions_eval", type=int, default=5, help="Number of completions to sample per eval problem for pass@k")
@@ -383,6 +386,8 @@ def parse_args():
     parser.add_argument("--reward_mask_max_frac", type=float, default=0.5, help="For cosine: maximum fraction of correct rewards to mask")
     parser.add_argument("--reward_mask_round_robin_k", type=int, default=4, help="For round_robin_k: number of buckets to rotate masking across")
     parser.add_argument("--reward_mask_weight", type=float, default=0.0, help="Scale for masked correct rewards (0.0 = drop, 1.0 = keep)")
+    parser.add_argument("--mask_format", action="store_true", help="Apply reward masking to formatting component as well")
+    parser.add_argument("--mask_warmup_steps", type=int, default=0, help="Disable reward masking for the first N training steps")
 
     # Multi-reward weights (combine components explicitly)
     parser.add_argument("--correctness_weight", type=float, default=1.0, help="Weight for correctness reward component")
@@ -397,6 +402,7 @@ def parse_args():
     parser.add_argument("--full_correct_zero_max_frac", type=float, default=0.3, help="Cosine max fraction to zero (fully-correct)")
     parser.add_argument("--format_full_threshold", type=float, default=0.9, help="Formatting threshold to consider sample fully-correct")
     parser.add_argument("--format_binary_threshold", type=float, default=None, help="If set, binarize formatting: 1 if format>=threshold else 0")
+    parser.add_argument("--zero_warmup_steps", type=int, default=0, help="Disable full-correct zeroing for the first N training steps")
 
     return parser.parse_args()
 
@@ -510,11 +516,20 @@ if __name__ == "__main__":
         if fbin_thresh is not None:
             format_t = (format_t >= float(fbin_thresh)).float()
 
-        # Apply reward masking ONLY to correctness component
-        reward_keep_mask = _build_reward_mask(correct_flags=correctness, step=step, args=args).to(model.device)
+        # Apply reward masking ONLY to correctness component (optionally formatting too)
+        # Warmup gating for reward masking
+        if step < int(getattr(args, "mask_warmup_steps", 0)):
+            reward_keep_mask = torch.ones_like(torch.tensor(correctness, device=model.device, dtype=torch.float32))
+        else:
+            reward_keep_mask = _build_reward_mask(correct_flags=correctness, step=step, args=args).to(model.device)
         reward_mask_weight = float(getattr(args, "reward_mask_weight", 0.0))
         effective_mask = reward_keep_mask + (1.0 - reward_keep_mask) * reward_mask_weight
         correctness_masked = correctness_t * effective_mask
+        # Optional: also mask formatting
+        if getattr(args, "mask_format", False):
+            format_effective = format_t * effective_mask
+        else:
+            format_effective = format_t
 
         # Multi-reward combiner: weights for components (future-proof)
         # By default: correctness_weight=1.0, format_weight=1.0
@@ -524,38 +539,62 @@ if __name__ == "__main__":
         # Optional per-component masking flags (extendable): currently we only mask correctness
         # If needed: format_mask_flag = getattr(args, "mask_format", False)
 
-        rewards = correctness_weight * correctness_masked + format_weight * format_t
+        rewards = correctness_weight * correctness_masked + format_weight * format_effective
 
-        # Full-correct zeroing: occasionally set total reward to 0 when correctness==1 and format>=threshold
-        def _build_full_correct_zero_mask(step: int, args):
+        # Full-correct zeroing: occasionally set total reward to 0 for a subset of fully-correct samples
+        def _build_full_correct_zero_mask_tensor(is_fully_correct: torch.Tensor, step: int, args) -> torch.Tensor:
             strat = getattr(args, "full_correct_zero_strategy", "none")
+            keep = torch.ones_like(is_fully_correct, dtype=torch.float32)
             if strat == "none":
-                return 1.0
+                return keep
             if strat == "every_n":
+                if not hasattr(args, "_fully_correct_seen"):
+                    args._fully_correct_seen = 0
                 n = max(1, int(getattr(args, "full_correct_zero_every_n", 10)))
-                return 0.0 if (step % n == 0) else 1.0
+                for i, fc in enumerate(is_fully_correct.tolist()):
+                    if fc:
+                        args._fully_correct_seen += 1
+                        if args._fully_correct_seen % n == 0:
+                            keep[i] = 0.0
+                return keep
             if strat == "prob_p":
                 p = max(0.0, min(1.0, float(getattr(args, "full_correct_zero_prob", 0.1))))
-                return 0.0 if random.random() < p else 1.0
+                rand = torch.rand_like(keep)
+                keep = torch.where((is_fully_correct == 1) & (rand < p), torch.zeros_like(keep), keep)
+                return keep
             if strat == "round_robin_k":
                 k = max(2, int(getattr(args, "full_correct_zero_round_robin_k", 4)))
-                return 0.0 if ((step % k) == 0) else 1.0
+                bucket = step % k
+                for i, fc in enumerate(is_fully_correct.tolist()):
+                    if fc and (i % k) == bucket:
+                        keep[i] = 0.0
+                return keep
             if strat == "cosine":
                 period = max(1, int(getattr(args, "full_correct_zero_period", 200)))
                 max_frac = max(0.0, min(1.0, float(getattr(args, "full_correct_zero_max_frac", 0.3))))
                 phase = (step % period) / float(period)
                 frac = 0.5 * (1.0 - math.cos(2.0 * math.pi * phase)) * max_frac
-                return 0.0 if random.random() < frac else 1.0
-            return 1.0
+                num_fc = int(is_fully_correct.sum().item())
+                num_to_zero = int(round(frac * num_fc))
+                if num_to_zero > 0:
+                    count = 0
+                    for i, fc in enumerate(is_fully_correct.tolist()):
+                        if fc and count < num_to_zero:
+                            keep[i] = 0.0
+                            count += 1
+                return keep
+            return keep
 
         # Determine fully-correct flags
         format_full_thresh = float(getattr(args, "format_full_threshold", 0.9))
         is_fully_correct = (correctness_t >= 0.999) & (format_t >= format_full_thresh)
-        # Build keep mask value (scalar per step) then expand per sample where fully-correct
-        full_keep_scalar = _build_full_correct_zero_mask(step, args)
-        full_keep_mask = torch.ones_like(rewards)
-        full_keep_mask[is_fully_correct] = full_keep_scalar
-        # Apply full-correct zeroing to combined rewards
+        # Build per-sample keep mask for fully-correct zeroing
+        # Warmup gating for full-correct zeroing
+        if step < int(getattr(args, "zero_warmup_steps", 0)):
+            full_keep_mask = torch.ones_like(is_fully_correct, dtype=torch.float32).to(rewards.device)
+        else:
+            full_keep_mask = _build_full_correct_zero_mask_tensor(is_fully_correct.float(), step, args).to(rewards.device)
+        # Apply full-correct zeroing to combined rewards (only affects fully-correct samples)
         rewards = rewards * full_keep_mask
         total_rewards = (correctness_t + format_t).tolist()
         # Multi-reward weights (combine components explicitly)
@@ -633,7 +672,8 @@ if __name__ == "__main__":
                     "correct": int(c),
                     "format_reward": float(f),
                     "total_reward": float(tr),
-                    "reward_kept": int(rkm)
+                    "reward_kept": int(rkm),
+                    "effective_mask": float(em)
                 } for t, ea, c, f, tr, rkm, em in zip(
                     completions_text,
                     extracted_answers,
@@ -657,12 +697,14 @@ if __name__ == "__main__":
             import wandb
             # Aggregate simple per-step averages for visibility in W&B
             avg_format = float(format_t.mean().item())
+            avg_format_effective = float((format_effective.mean().item()))
             avg_correct = float(correctness_t.mean().item())
             avg_total_reward = float(rewards.mean().item())
             wandb.log({
                 "train/loss": loss.item(),
                 "lr": scheduler.get_last_lr()[0],
                 "train/avg_format_reward": avg_format,
+                "train/avg_format_reward_effective": avg_format_effective,
                 "train/avg_correctness": avg_correct,
                 "train/avg_total_reward": avg_total_reward,
                 "train/num_masked_correct": run_log["steps"][step]["train"]["num_masked_correct"],
@@ -778,6 +820,19 @@ if __name__ == "__main__":
                     "per_problem_type": per_problem_type,
                 }
             }
+            # Write a concise eval summary to summary.json for external consumption
+            try:
+                summary_out = {
+                    "step": step,
+                    "pass_at_k": avg_pass_at_k,
+                    "avg_format_reward": avg_format,
+                    "num_eval_problems": eval_count,
+                    "per_problem_type": per_problem_type,
+                }
+                with open(os.path.join(args.output_dir, "summary.json"), "w") as sf:
+                    json.dump(summary_out, sf, indent=2)
+            except Exception as e:
+                print(f"Warning: failed to write summary.json at step {step}: {e}")
             
             if args.use_wandb:
                 import wandb
@@ -787,8 +842,8 @@ if __name__ == "__main__":
                     "eval/num_eval_problems": eval_count,
                 }, step=step)
 
-        # Periodic model saving
-        if (step + 1) % args.save_every == 0:
+        # Periodic model saving (skipped if disabled or saving only last)
+        if (step + 1) % args.save_every == 0 and not getattr(args, "disable_checkpoint_saving", False) and not getattr(args, "save_only_last", False):
             checkpoint_path = os.path.join(args.output_dir, f"checkpoint_step_{step+1}")
             model.save_pretrained(checkpoint_path)
             tokenizer.save_pretrained(checkpoint_path)
@@ -797,6 +852,14 @@ if __name__ == "__main__":
         # Persist log
         with open(os.path.join(args.output_dir, "run_log.json"), "w") as f:
             json.dump(run_log, f, indent=2)
+
+    # Optionally save only a single final checkpoint at the end
+    if getattr(args, "save_only_last", False) and not getattr(args, "disable_checkpoint_saving", False):
+        final_ckpt = os.path.join(args.output_dir, "checkpoint_final")
+        os.makedirs(final_ckpt, exist_ok=True)
+        model.save_pretrained(final_ckpt)
+        tokenizer.save_pretrained(final_ckpt)
+        print(f"Saved final checkpoint to {final_ckpt}")
 
 
 

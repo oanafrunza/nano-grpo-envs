@@ -15,7 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Common arguments (tweak as needed)
-COMMON_ARGS="--format_full_threshold 1.0 --format_binary_threshold 1.0"
+# Default to graded formatting: only set full threshold, omit binary threshold
+COMMON_ARGS="--format_full_threshold 0.9"
 
 # Experiment definitions: name | args
 # You can comment/uncomment lines to select experiments.

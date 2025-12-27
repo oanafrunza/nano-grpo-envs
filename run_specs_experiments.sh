@@ -65,7 +65,8 @@ if [ ${#TRAIN_WEIGHTS[@]} -ne ${#TRAIN_NAMES[@]} ]; then
 fi
 
 # Common formatting thresholds and other shared args (mirror batch script)
-COMMON_ARGS="--format_full_threshold 1.0 --format_binary_threshold 1.0"
+# Default to graded formatting: only set full threshold, omit binary threshold
+COMMON_ARGS="--format_full_threshold 0.9"
 
 # Experiment definitions: name | args (copied from run_batch_experiments.sh)
 EXPERIMENTS=$(cat <<'EOF'
