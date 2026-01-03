@@ -1,0 +1,4 @@
+srun --time=24:00:00 --gres=gpu:3 --pty bash
+echo $CUDA_VISIBLE_DEVICES
+NCCL_P2P_DISABLE=1 CUDA_VISIBLE_DEVICES=0,1 uv run vllm_server.py --model Qwen/Qwen2.5-7B-Instruct --port 8000
+srun --nodelist=slurm-h100-206-119 --pty bash

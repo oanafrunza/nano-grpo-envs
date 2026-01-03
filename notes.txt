@@ -1,0 +1,165 @@
+Masking: Scales or drops the correctness reward for some correct samples.
+
+What it does: Applies a per-sample multiplier to the correctness component via reward_keep_mask and reward_mask_weight.
+Typical effect: If masked and reward_mask_weight=0.5, a correct sample’s correctness reward is halved; if 0.0, it’s dropped. Formatting can optionally be masked if --mask_format is set.
+Purpose: Add “discipline” by withholding some positive reinforcement to improve robustness, prevent overfitting, or encourage better exploration while still keeping partial signal.
+
+
+
+
+Zeroing: Sets the entire combined reward to zero, but only for fully-correct samples meeting a format threshold.
+
+What it does: Builds full_keep_mask for fully-correct samples (correctness=1 and format >= format_full_threshold). Selected ones get a 0 multiplier on the total combined reward (correctness_weight * correctness_masked + format_weight * format_effective).
+Typical effect: The sample contributes no reward at all when zeroed, regardless of correctness or formatting magnitude.
+Purpose: Stronger regularization for “too easy/solved” cases; encourages learning from harder samples or prevents runaway reinforcement on already-mastered behaviors.
+Key differences:
+
+Scope: Masking targets the correctness component (and optionally formatting); zeroing targets the full combined reward.
+Triggering: Masking applies to correct answers per strategy; zeroing applies only to fully-correct answers gated by formatting threshold (unless you set format_full_threshold=0.0 to ignore format).
+Strength: Masking is graded (tunable via reward_mask_weight); zeroing is binary (keep vs zero).
+Intent: Masking moderates positive signals; zeroing suppresses signals entirely for selected fully-correct cases.
+In your scripts:
+
+Masking is controlled by --reward_mask_strategy, --reward_mask_every_n|prob|cosine|round_robin_k, and --reward_mask_weight; optional --mask_format.
+Zeroing is controlled by --full_correct_zero_strategy, its parameters, and --format_full_threshold (or --format_full_threshold 0.0 to ignore format). Warmups: --mask_warmup_steps, --zero_warmup_steps.
+
+===================================================================================
+Science2 experiments
+===================================================================================
+
+SEED1:
+
+Why baseline wins here
+
+Masking impact: Every-10 correct with weight 0.5 reduces positive signal after warmup, which seems to hurt tasks that thrive on steady reinforcement (simple geometry, counting). You do see gains in some compositional/sequence tasks (palindrome, family), suggesting masking isn’t universally harmful, just not a net win for seed1.
+
+Zeroing impact: “No-threshold” zeroing (format_full_threshold=0.0) zeros every 10th fully-correct completion, broadly cutting off exploit signal late in training; that likely drags overall pass@1 below baseline.
+Format balance: avg_format_reward dropped notably for softmask on some tasks (e.g., family_relationships 0.056 vs 0.284), even though we didn’t mask format. With less correctness signal, the model may deprioritize tags/structure; the equal weights (1.0/1.0) might need rebalancing when masking is active.
+Seeds/time: This is one seed at step 900. The effect could narrow or flip later or across seeds; it’s too early to conclude definitively.
+
+-------------------------------------------------------------------------------------
+
+==============================================================================
+SCIENCE: SEED 1&2
+==============================================================================
+
+Findings
+
+Seed 1 overall:
+baseline_nomask_seed1: 36.60% pass@1, avg_format 0.3766
+softmask_every10_wt05_seed1: 32.84% pass@1, avg_format 0.2970
+fullzero_every10_nothresh_seed1: 30.96% pass@1, avg_format 0.3266
+Seed 2 overall:
+baseline_nomask_seed2: 38.36% pass@1, avg_format 0.3778
+softmask_every10_wt05_seed2: 35.80% pass@1, avg_format 0.3893
+fullzero_every10_nothresh_seed2: 32.80% pass@1, avg_format 0.2298
+Per-problem trends:
+Softmask improves some tasks (e.g., family_relationships, maze for seed1; slight gains in propositional_logic for seed2) but hurts others (notably leg_counting and polynomial_equations in both seeds).
+Full-correct zeroing, especially frequent/thresholdless, consistently hurts both pass@1 and formatting.
+Recommendations
+
+Continuous suite (gentler exploration):
+Softmask: reduce masking intensity; keep exploration but avoid correctness collapse.
+Weight: 0.3–0.5 (seed2’s higher format suggests 0.5 OK; 0.3 safer for seed1).
+Probability: 0.1–0.2 (start 0.2, drop to 0.1 if pass@1 degrades).
+Every-N: 20–30 for every_n variants (defaulted to 30 for cont_softmask_light).
+Round-robin: use k=2–4 with weight 0.5 to spread masking cost across chains.
+Zeroing: avoid high-frequency zeroing; keep format_full_threshold=0.9, reduce prob to 0.2, or every_n≥20.
+Warmups: keep mask_warmup_steps≥400 for light variants; ZERO_WARMUP_STEPS≥200.
+Phase-adapt suite (phase-aware exploration):
+Pre-switch: gentle softmask prob_p=0.3, weight=0.3; focus consolidation (avoid heavy masking).
+Post-switch: modest length scaling post_phase_max_len_factor≈1.3 and small diversity bonus 0.05.
+Round-robin alternative: k=2, weight=0.5 for controlled exploration in Phase ②.
+Keep phase detector defaults; adjust once you see avg_completion_nll behavior (target_nll≈2.0, window=5, patience=3).
+
+errors
+Key patterns
+
+Palindromes: frequent invalid constructions (extra chars, non-mirror sequences) despite clean think/answer tags; format is fine, the content logic is off.
+Logic: many step‑by‑step chains are correct, but final conclusions sometimes drift (e.g., asserting Q or ¬Q when ¬P is the only necessity).
+Leg counting: consistently correct — arithmetic and “no‑legs” edge cases handled.
+Maze/Sokoban: very low pass@1; failures look length/strategy constrained (ending early or exploring one path).
+Full-zeroing: degrades simple geometry and overall; not worth it here.
+Softmasking: helps maze and family relationships (seed1) but hurts leg_counting/simple_geometry; masking intensity matters.
+
+
+==============================================================================
+CONT VS FULL experiments
+==============================================================================
+Great — I generated a clean cont vs full comparison, including plots.
+
+New artifacts
+
+Summary CSV: exp_output/cont_vs_full/_analysis/summary.csv
+Per-problem deltas CSV: exp_output/cont_vs_full/_analysis/per_problem_delta.csv
+Per-problem delta plot: exp_output/cont_vs_full/_analysis/per_problem_delta.png
+Overall bar (best cont vs baseline avg): exp_output/cont_vs_full/_analysis/overall_bar.png
+Quick read
+
+Best continuous: 38.28 pass@1 (cont_fullzero_everyN_t09_seed1).
+Baseline (avg over baseline_nomask seeds): 37.48 pass@1.
+Per-problem standouts: number_sequence (+7.37), simple_geometry (+4.49), palindromes (+3.68); small dips on family_relationships (−5.00) and polynomial_equations (−1.38). Maze flat; sokoban still near zero.
+
+Overall pass@1:
+Best continuous: 38.28 (cont_fullzero_everyN_t09_seed1), format 0.386
+Baseline (avg across baseline_nomask_seed1/2): 37.48, format 0.377
+Delta: +0.80 vs baseline average; essentially on par with the best baseline_nomask (38.36).
+Per-problem highlights (cont best vs baseline average):
+number_sequence: +7.37 (73.68 vs 66.32)
+simple_geometry: +4.49 (84.50 vs 80.01)
+palindrome_generation: +3.68 (21.11 vs 17.44)
+propositional_logic: +1.61 (45.71 vs 44.11)
+leg_counting: +1.09 (45.22 vs 44.13)
+family_relationships: −5.00 (50.36 vs 55.36)
+polynomial_equations: −1.38 (66.90 vs 68.28)
+maze: ±0.00 (10.67 vs 10.67)
+sokoban: −0.18 (0.00 vs 0.18)
+Continuous variant context:
+Best cont run was fullzero-everyN; the softmask cont runs trail both the baseline_nomask and the full-set softmask runs (see cont overall vs full overall).
+
+==============================================================================
+GRPO vs DR-GRPO
+==============================================================================
+
+You’re right — everything we’ve run so far used DR‑GRPO (the default), not “pure” GRPO. Here’s the crisp diff and what it means in our setup.
+
+Objective shape
+
+GRPO: vanilla policy‑gradient on completion tokens with advantage normalization.
+Loss (per sequence): L = − E[ A · Σ_t log πθ(a_t|s_t) ].
+In code: implemented via the “stop‑grad trick” r = exp(logπ − sg(logπ)) so the forward value is 1 but gradients match REINFORCE.
+DR‑GRPO: clipped/regularized variant of GRPO for stability.
+Core idea: limit excessively large per‑token updates by clipping the update factor within [1−ε, 1+ε], optionally add KL to a reference model.
+Typical form: L = − E[ A · clip(r, 1−ε, 1+ε) ] + β·KL(πθ || πref). In our runs β=0 (so no KL), but clipping is active.
+What we actually used
+
+Loss type: dr_grpo (default in the runner and main script).
+Epsilon: epsilon_low=0.2 (and epsilon_high=None → symmetric clip at ±0.2).
+KL: beta=0.0 → no ref‑KL; stability comes from clipping only.
+Differences across experiments so far were from reward masking/zeroing and schedules, not from changing the loss family.
+Why it matters
+
+GRPO (no clipping): can move faster (bigger updates) but is more volatile; sometimes better for tasks needing large policy shifts.
+DR‑GRPO (clipped): typically more stable and less likely to overreact to noisy rewards; can slightly slow progress or dampen exploration.
+How to switch to “pure GRPO”
+
+Keep everything else identical and set --loss_type grpo (you can still use Liger for speed).
+Optional follow‑ups:
+GRPO baseline (no masking) to compare directly vs DR‑GRPO baseline.
+GRPO + masking to see whether masking helps even without clipping.
+If you want, I can launch a GRPO baseline now (same data/seed/lengths) and fold it into the comparison tables/plots so we have a clean GRPO vs DR‑GRPO read.
+
+
+
+================================================================================
+on truncation
+================================================================================
+
+Full-eval truncation rates (missing </answer> across all evals):
+
+cont_fullzero_everyN_t09_seed1: 2,568/25,000 = 10.27% truncated; 10 eval steps of 2,500 each
+cont_fullzero_prob_t09_seed1: 3,824/25,000 = 15.30% truncated
+cont_softmask_prob_p_seed1: 2,497/25,000 = 9.99% truncated
+cont_softmask_roundrobin_seed1: 3,591/25,000 = 14.36% truncated
+
+Even at 512 tokens, 10–15% of eval completions didn’t include the closing tag, consistent with hitting generation caps or stopping early.
