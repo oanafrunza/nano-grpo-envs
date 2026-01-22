@@ -387,6 +387,10 @@ def parse_args():
     parser.add_argument("--reward_mask_round_robin_k", type=int, default=4, help="For round_robin_k: number of buckets to rotate masking across")
     parser.add_argument("--reward_mask_weight", type=float, default=0.0, help="Scale for masked correct rewards (0.0 = drop, 1.0 = keep)")
     parser.add_argument("--mask_format", action="store_true", help="Apply reward masking to formatting component as well")
+    # New: independently control masking for correctness vs formatting
+    parser.add_argument("--mask_correctness", dest="mask_correctness", action="store_true", help="Apply reward masking to correctness component (default)")
+    parser.add_argument("--no_mask_correctness", dest="mask_correctness", action="store_false", help="Disable reward masking for correctness component")
+    parser.set_defaults(mask_correctness=True)
     parser.add_argument("--mask_warmup_steps", type=int, default=0, help="Disable reward masking for the first N training steps")
 
     # Multi-reward weights (combine components explicitly)
@@ -524,8 +528,12 @@ if __name__ == "__main__":
             reward_keep_mask = _build_reward_mask(correct_flags=correctness, step=step, args=args).to(model.device)
         reward_mask_weight = float(getattr(args, "reward_mask_weight", 0.0))
         effective_mask = reward_keep_mask + (1.0 - reward_keep_mask) * reward_mask_weight
-        correctness_masked = correctness_t * effective_mask
-        # Optional: also mask formatting
+        # Apply masks per component based on flags
+        if getattr(args, "mask_correctness", True):
+            correctness_masked = correctness_t * effective_mask
+        else:
+            correctness_masked = correctness_t
+
         if getattr(args, "mask_format", False):
             format_effective = format_t * effective_mask
         else:

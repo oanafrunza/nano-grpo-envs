@@ -1,3 +1,51 @@
+## Masking Strategy Wins (Phase-Adapt Split-Masking @ L512)
+
+This highlights where masking clearly helps beyond overall pass@1, using the top variants from each suite:
+- Phase-Adapt: phase_split_masking L512
+- Continuous: cont_softmask_prob_p L512
+- Science2 Baseline: baseline_nomask L512
+
+Per-task summary:
+
+| Task | Format winner | Pass@1 winner | Notes |
+|------|----------------|----------------|-------|
+| propositional_logic | Phase-Adapt | Continuous | Phase has highest format (~0.40); cont leads pass (~50.36). |
+| polynomial_equations | Phase-Adapt | Baseline | Phase has highest format (~0.399); baseline leads pass (~≥67). |
+| simple_geometry | Phase-Adapt | Baseline | Phase has highest format (~0.40); baseline leads pass (~≥80). |
+| leg_counting | Phase-Adapt | Baseline | Phase has highest format (~0.40); baseline leads pass (~≥44). |
+| number_sequence | Phase-Adapt | Baseline | Phase has highest format (~0.40); baseline leads pass (~≥66). |
+| maze | Phase-Adapt | Phase-Adapt | Masking improves both pass (~14.9 vs cont ~12.0, baseline ~10.7) and format (~0.40). |
+| sokoban | Phase-Adapt | Phase-Adapt | Masking wins on pass (~0.54 vs cont ~0.0, baseline ~0.18) and format (~0.399). |
+| bf | — | — | Pass near-zero across all; no meaningful winner; cont slightly higher format. |
+
+Why this matters:
+- If strict formatting is required (e.g., tag compliance, auto-graders), split-masking improves format consistency across many tasks while keeping accuracy competitive.
+- For hard puzzle-like tasks (maze, sokoban), split-masking delivers the best combination of accuracy and formatting.
+- For pure accuracy on math/logic (simple_geometry, polynomial_equations, number_sequence), baseline/continuous still lead on pass@1.
+
+See also:
+- Aggregated metrics and plots: [exp_output/visualizations](exp_output/visualizations)
+- Top-variant overall: [top_variants_overall.png](exp_output/visualizations/top_variants_overall.png)
+- Per-task comparison: [per_task_top3_comparison.png](exp_output/visualizations/per_task_top3_comparison.png)
+
+**Phase-Adapt Split-Masking: Details**
+- Core: Uses a windowed moving-average of completion NLL to detect the training “consolidation” phase. Once the signal stabilizes (lower variance and slope change), it triggers a single switch to consolidation.
+- After switch: Scales chain sampling/weighting while keeping sequence length fixed (L512). This increases trajectory signal without confounding length, improving gradient stability and formatting consistency.
+- Masking mechanics: Alternates which token spans are reward-masked to separate signals.
+  - Format-emphasis step: mask reasoning/answer spans; train structure, tags, and required formatting.
+  - Correctness-emphasis step: mask formatting spans; train reasoning and final correctness.
+  - Alternation prevents reward collapse and reduces interference between format and correctness.
+- Why it helps: Reduces gradient interference, boosts formatting robustness across structured tasks, and improves puzzle-like tasks (maze, sokoban) on both format and pass@1.
+- Trade-offs: For math/logic tasks where raw accuracy dominates (e.g., simple geometry, number sequences), no-mask or continuous softmask baselines typically lead on pass@1.
+- What to monitor: Moving-average NLL plateau and the phase-switch event; chain scaling applied (with length unchanged); rising formatting metrics; per-task pass@1/format deltas.
+
+**Quick Highlights**
+- Pass@1: ~31.5 at L512; competitive with continuous softmask, below no-mask baseline.
+- Format robustness: Top formatting on structured tasks (propositional_logic, polynomial_equations, simple_geometry, leg_counting, number_sequence).
+- Puzzle tasks: Wins both pass@1 and format on maze and sokoban.
+- Mechanism: Single consolidation switch via moving-average completion NLL; scales chains (not length); alternates masked spans to separate format vs correctness signals.
+- When to use: Prefer for strict formatting requirements or puzzle-heavy curricula; choose baseline/continuous for raw accuracy on math/logic.
+- See plots: [top_variants_overall.png](exp_output/visualizations/top_variants_overall.png), [per_task_top3_comparison.png](exp_output/visualizations/per_task_top3_comparison.png), [pass_at1_comparison.png](exp_output/visualizations/pass_at1_comparison.png)
 ## Reward Masking & Zeroing
 
 This repo includes disciplined mechanisms to occasionally withhold rewards to encourage exploration and robustness. You can combine or run them independently.

@@ -169,7 +169,7 @@ def save_per_problem_csv(runs: Dict[str, Dict[str, Any]], out_dir: str) -> str:
     return path
 
 
-def plot_overall_bar(runs: Dict[str, Dict[str, Any]], out_dir: str, title_prefix: str = 'Science Suite') -> Optional[str]:
+def plot_overall_bar(runs: Dict[str, Dict[str, Any]], out_dir: str, title_prefix: str = 'Science Suite', colors: Optional[List[str]] = None) -> Optional[str]:
     if not HAVE_MPL:
         return None
     names = []
@@ -178,10 +178,33 @@ def plot_overall_bar(runs: Dict[str, Dict[str, Any]], out_dir: str, title_prefix
         names.append(name)
         vals.append(r.get('pass_at_k') or 0.0)
     plt.figure(figsize=(10, 4))
-    plt.bar(names, vals, color='#4C78A8')
+    # Use distinct colors for each bar if provided; else choose a qualitative palette
+    if colors is None:
+        palette = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#EECA3B', '#B279A2', '#FF9DA7', '#9D755D', '#BAB0AC']
+        use_colors = [palette[i % len(palette)] for i in range(len(names))]
+    else:
+        use_colors = colors
+    bars = plt.bar(names, vals, color=use_colors)
     plt.ylabel('pass@1 (%)')
     plt.title(f'{title_prefix}: Overall pass@1 by Run')
     plt.xticks(rotation=30, ha='right')
+    # Add value labels above each bar and give slight headroom
+    try:
+        ymax = max(vals) if vals else 0.0
+        for b, v in zip(bars, vals):
+            plt.text(
+                b.get_x() + b.get_width() / 2.0,
+                b.get_height() + (ymax * 0.02 if ymax else 0.02),
+                f"{v:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1.5)
+            )
+        if ymax:
+            plt.ylim(0, ymax * 1.10)
+    except Exception:
+        pass
     outp = os.path.join(out_dir, 'overall_pass_at1.png')
     plt.tight_layout()
     plt.savefig(outp)
@@ -223,6 +246,7 @@ def plot_relative_to_baseline(runs: Dict[str, Dict[str, Any]], out_dir: str, bas
     x = range(len(problem_types))
     width = max(0.8 / max(1, len(runs)), 0.15)
     i = 0
+    baseline_drawn_hline = False
     for name, r in sorted(runs.items()):
         if name == resolved_key:
             deltas = [0.0] * len(problem_types)
@@ -232,7 +256,22 @@ def plot_relative_to_baseline(runs: Dict[str, Dict[str, Any]], out_dir: str, bas
                 b = base_pt.get(pt, {}).get('pass_at_1') or 0.0
                 v = r.get('per_problem_type', {}).get(pt, {}).get('pass_at_1') or 0.0
                 deltas.append(v - b)
-        ax.bar([xx + i * width for xx in x], deltas, width=width, label=name)
+
+        # Draw the bars for this series; suppress baseline label to avoid legend duplication
+        positions = [xx + i * width for xx in x]
+        bar_label = None if name == resolved_key else name
+        bars = ax.bar(positions, deltas, width=width, label=bar_label)
+
+        # If this is the baseline (all zeros), also draw a small marker/line so it is visible
+        if name == resolved_key:
+            # Draw a short horizontal line segment at y=0 for each category to make baseline visible
+            # Label only once to avoid legend duplication
+            base_label = name if not baseline_drawn_hline else None
+            for pos in positions:
+                ax.hlines(0, pos - width * 0.45, pos + width * 0.45,
+                          colors=bars.patches[0].get_facecolor(), linewidth=2, label=base_label)
+                base_label = None
+            baseline_drawn_hline = True
         i += 1
     ax.axhline(0, color='k', linewidth=0.8)
     ax.set_xticks([xx + (i - 1) * width / 2 for xx in x])
@@ -244,6 +283,52 @@ def plot_relative_to_baseline(runs: Dict[str, Dict[str, Any]], out_dir: str, bas
     ax.set_title(title)
     ax.legend()
     outp = os.path.join(out_dir, 'per_problem_delta_vs_baseline.png')
+    plt.tight_layout()
+    plt.savefig(outp)
+    plt.close()
+    return outp
+
+
+def plot_per_problem_absolute(runs: Dict[str, Dict[str, Any]], out_dir: str, title_prefix: str = 'Science Suite') -> Optional[str]:
+    """Plot per-problem absolute pass@1 for all provided runs (grouped bars per problem).
+
+    Expects each run to have per_problem_type with pass_at_1 values.
+    """
+    if not HAVE_MPL:
+        return None
+    # Collect the union of problem types
+    problem_types = set()
+    for r in runs.values():
+        problem_types.update((r.get('per_problem_type') or {}).keys())
+    problem_types = sorted(problem_types)
+    if not problem_types:
+        return None
+
+    # Prepare data matrix: problems x runs
+    run_names = [name for name, _ in sorted(runs.items())]
+    vals_by_run = []
+    for name in run_names:
+        per = runs[name].get('per_problem_type', {})
+        vals = [(per.get(pt, {}).get('pass_at_1') or 0.0) for pt in problem_types]
+        vals_by_run.append(vals)
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    x = list(range(len(problem_types)))
+    width = max(0.8 / max(1, len(run_names)), 0.20)
+
+    # Distinct colors for each run
+    palette = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2', '#EECA3B']
+    colors = [palette[i % len(palette)] for i in range(len(run_names))]
+
+    for i, (name, vals) in enumerate(zip(run_names, vals_by_run)):
+        ax.bar([xx + i * width for xx in x], vals, width=width, label=name, color=colors[i])
+
+    ax.set_xticks([xx + (len(run_names) - 1) * width / 2 for xx in x])
+    ax.set_xticklabels(problem_types, rotation=30, ha='right')
+    ax.set_ylabel('pass@1 (%)')
+    ax.set_title(f'{title_prefix}: Per-Problem Performance (grouped by model)')
+    ax.legend()
+    outp = os.path.join(out_dir, 'per_problem_three_models.png')
     plt.tight_layout()
     plt.savefig(outp)
     plt.close()

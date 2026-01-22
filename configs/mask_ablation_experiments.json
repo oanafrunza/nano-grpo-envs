@@ -1,0 +1,18 @@
+[
+  {
+    "name": "mask_correctness_every10_zero",
+    "args": "--reward_mask_strategy every_n --reward_mask_every_n 10 --reward_mask_weight 0.0 --mask_correctness --correctness_weight 1.0 --format_weight 1.0 --full_correct_zero_strategy none --mask_warmup_steps 200"
+  },
+  {
+    "name": "mask_correctness_prob02_soft",
+    "args": "--reward_mask_strategy prob_p --reward_mask_prob 0.2 --reward_mask_weight 0.5 --mask_correctness --correctness_weight 1.0 --format_weight 1.0 --full_correct_zero_strategy none --mask_warmup_steps 200"
+  },
+  {
+    "name": "mask_format_every10_zero",
+    "args": "--reward_mask_strategy every_n --reward_mask_every_n 10 --reward_mask_weight 0.0 --mask_format --no_mask_correctness --correctness_weight 1.0 --format_weight 1.0 --full_correct_zero_strategy none --mask_warmup_steps 200"
+  },
+  {
+    "name": "mask_format_prob02_soft",
+    "args": "--reward_mask_strategy prob_p --reward_mask_prob 0.2 --reward_mask_weight 0.5 --mask_format --no_mask_correctness --correctness_weight 1.0 --format_weight 1.0 --full_correct_zero_strategy none --mask_warmup_steps 200"
+  }
+]

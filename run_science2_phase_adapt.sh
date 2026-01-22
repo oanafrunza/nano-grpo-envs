@@ -83,6 +83,7 @@ EXPERIMENTS=$(cat <<'EXPS'
 phase_adapt_softmask          | --enable_phase_adaptive --reward_mask_strategy prob_p --reward_mask_prob ${ADAPT_SOFT_PROB:-0.3} --reward_mask_weight ${ADAPT_SOFT_WEIGHT:-0.3} --mask_warmup_steps ${MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length ${MAX_LEN_BASE} --max_completion_length_cap ${MAX_COMPLETION_LENGTH_CAP} --post_phase_max_len_factor ${ADAPT_POST_LEN_FACTOR} --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 phase_adapt_diversity         | --enable_phase_adaptive --reward_mask_strategy round_robin_k --reward_mask_round_robin_k ${ADAPT_ROUND_ROBIN_K:-2} --reward_mask_weight ${ADAPT_ROUND_ROBIN_WEIGHT:-0.5} --mask_warmup_steps ${MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length ${MAX_LEN_BASE} --max_completion_length_cap ${MAX_COMPLETION_LENGTH_CAP} --post_phase_max_len_factor ${ADAPT_POST_LEN_FACTOR} --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 phase_split_masking           | --enable_phase_adaptive --reward_mask_strategy every_n --reward_mask_every_n ${LIGHT_EVERY_N} --reward_mask_weight ${LIGHT_WEIGHT} --mask_format --mask_warmup_steps ${LIGHT_MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length ${MAX_LEN_BASE} --max_completion_length_cap ${MAX_COMPLETION_LENGTH_CAP} --post_phase_max_len_factor ${ADAPT_POST_LEN_FACTOR} --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
+phase_split_masking_fullzero_e20 | --enable_phase_adaptive --reward_mask_strategy every_n --reward_mask_every_n ${LIGHT_EVERY_N} --reward_mask_weight ${LIGHT_WEIGHT} --mask_format --mask_warmup_steps ${LIGHT_MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --full_correct_zero_strategy every_n --full_correct_zero_every_n 20 --max_completion_length ${MAX_LEN_BASE} --max_completion_length_cap ${MAX_COMPLETION_LENGTH_CAP} --post_phase_max_len_factor ${ADAPT_POST_LEN_FACTOR} --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 EXPS
 )
 
@@ -91,8 +92,16 @@ EXPERIMENTS_LEN512=$(cat <<'EXPS512'
 phase_adapt_softmask_len512   | --enable_phase_adaptive --reward_mask_strategy prob_p --reward_mask_prob ${ADAPT_SOFT_PROB:-0.3} --reward_mask_weight ${ADAPT_SOFT_WEIGHT:-0.3} --mask_warmup_steps ${MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length 512 --max_completion_length_cap 512 --post_phase_max_len_factor 1.0 --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 phase_adapt_diversity_len512  | --enable_phase_adaptive --reward_mask_strategy round_robin_k --reward_mask_round_robin_k ${ADAPT_ROUND_ROBIN_K:-2} --reward_mask_weight ${ADAPT_ROUND_ROBIN_WEIGHT:-0.5} --mask_warmup_steps ${MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length 512 --max_completion_length_cap 512 --post_phase_max_len_factor 1.0 --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 phase_split_masking_len512    | --enable_phase_adaptive --reward_mask_strategy every_n --reward_mask_every_n ${LIGHT_EVERY_N} --reward_mask_weight ${LIGHT_WEIGHT} --mask_format --mask_warmup_steps ${LIGHT_MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --max_completion_length 512 --max_completion_length_cap 512 --post_phase_max_len_factor 1.0 --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
+phase_split_masking_len512_fullzero_e20 | --enable_phase_adaptive --reward_mask_strategy every_n --reward_mask_every_n ${LIGHT_EVERY_N} --reward_mask_weight ${LIGHT_WEIGHT} --mask_format --mask_warmup_steps ${LIGHT_MASK_WARMUP_STEPS} --zero_warmup_steps ${ZERO_WARMUP_STEPS} --full_correct_zero_strategy every_n --full_correct_zero_every_n 20 --max_completion_length 512 --max_completion_length_cap 512 --post_phase_max_len_factor 1.0 --post_phase_chain_scale ${POST_PHASE_CHAIN_SCALE} --diversity_weight ${ADAPT_DIVERSITY_WEIGHT:-0.05}
 EXPS512
 )
+
+# Optional filter: set EXPERIMENTS_FILTER (regex) to run a subset by name
+if [ -n "${EXPERIMENTS_FILTER:-}" ]; then
+  EXPERIMENTS=$(printf "%s\n" "$EXPERIMENTS" | grep -E "${EXPERIMENTS_FILTER}" || true)
+  EXPERIMENTS_LEN512=$(printf "%s\n" "$EXPERIMENTS_LEN512" | grep -E "${EXPERIMENTS_FILTER}" || true)
+  echo "[INFO] Applying EXPERIMENTS_FILTER='${EXPERIMENTS_FILTER}'" | tee -a "$MASTER_LOG"
+fi
 
 for SEED in "${SEEDS[@]}"; do
   echo "[INFO] Launching phase-adapt experiments for seed=${SEED}" | tee -a "$MASTER_LOG"

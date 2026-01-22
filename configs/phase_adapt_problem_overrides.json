@@ -1,0 +1,19 @@
+{
+  "palindrome_generation": {
+    "mask_format": true,
+    "format_weight": 1.3
+  },
+  "propositional_logic": {
+    "mask_format": true,
+    "format_weight": 1.2
+  },
+  "maze": {
+    "max_completion_length": 2048
+  },
+  "sokoban": {
+    "max_completion_length": 2048
+  },
+  "bf": {
+    "max_completion_length": 2048
+  }
+}
