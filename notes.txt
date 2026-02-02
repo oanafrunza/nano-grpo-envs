@@ -163,3 +163,75 @@ cont_softmask_prob_p_seed1: 2,497/25,000 = 9.99% truncated
 cont_softmask_roundrobin_seed1: 3,591/25,000 = 14.36% truncated
 
 Even at 512 tokens, 10–15% of eval completions didn’t include the closing tag, consistent with hitting generation caps or stopping early.
+
+
+===================================================================================================
+PHASE SPLIT Masking
+===================================================================================================
+
+Intuitive
+
+We train in two phases: “consolidation” then “planning.” While training, we watch how uncertain the model’s completions are. Uncertainty is measured by the average per-token negative log-likelihood (think: how surprised the model is by its own outputs).
+
+Simple Rule
+After an initial warmup, we compute a sliding-window average of that uncertainty. When it stays below a chosen target for several consecutive windows (patience), we declare consolidation “done” and switch to planning.
+Why That Matters
+
+Below-target uncertainty means the model is reliably producing well-formed, low-entropy answers on the basics; switching phase lets us alter training emphasis (e.g., adjust length/chain budget and add a small diversity incentive) to push broader, harder reasoning.
+Key knobs (plain English)
+
+Target: how low the average uncertainty must be.
+Window: how many steps we average over.
+Patience: how many windows in a row must be below target.
+Warmup: don’t check until early training noise settles.
+
+Acknowledged. Plan: give a concise, plain-English summary of the masking used in this run, with the key knobs and specific values.
+
+Masking approach: phase-split masking (format-aware reward masking on a cadence).
+Cadence: masks some rewards on every Nth correct sample (N=20) to prevent overfitting to easy patterns and encourage broader coverage.
+Soft mask: uses a weight (0.7) so masked rewards aren’t hard-zeroed; they’re down-weighted rather than removed.
+Format-aware: applies the mask to format rewards as well (mask_format=True), keeping the model aligned to the required <answer>…</answer> output.
+Warmup: masking only starts after an initial stabilization (mask_warmup_steps=400).
+Full-correct zeroing: not used in this specific phase-split run (full_correct_zero_strategy=none). For contrast, the best continuous run uses full-correct zero every 20 after a 200-step warmup.
+
+
+============================================================================================
+In the 10-task sweep cont was better but on OOD split is better 
+============================================================================================
+
+Observation: Continuous (full-zero-every-20) led on the 10-task in-sweep eval, while phase-split masking edged it out on the 30-task OOD set.
+Likely cause — generalization vs specialization:
+Format-aware masking: Phase-split down-weights rewards on a cadence and applies masking to format, which tends to harden adherence to the required output shape; this pays off on OOD tasks that penalize format slips.
+Phase switch: Once uncertainty drops, training shifts emphasis (chain/length budget and a small diversity bonus), encouraging broader reasoning patterns rather than overfitting to the in-sweep distribution.
+Diversity bonus: Small distinct-2 nudges variety post-switch, helping unfamiliar structures in stretch tasks.
+Task mix: On Core-like tasks, both are close; on Stretch, phase-split typically shows small but consistent gains, which accumulates to a higher overall.
+Continuous full-zero: Strong at tightening correctness on seen patterns, but can over-prune “easy wins” reinforcement without boosting flexibility needed for OOD shifts.
+
+-------------------------------------------------------------------------------------------
+masking vs. zeroing
+-------------------------------------------------------------------------------------------
+Correctness masking: always applies after warmup; correctness reward is multiplied by the mask from the chosen strategy (every_n, prob_p, etc.) with soft weight via reward_mask_weight.
+Format masking: optional; controlled by mask_format. When mask_format=True, the same mask is applied to the format reward; when False, format reward is left unmasked.
+Warmups: mask_warmup_steps delays any masking until training stabilizes.
+Full-correct zeroing: separate mechanism (full_correct_zero_strategy, full_correct_zero_every_n/prob/k/cosine) that zeros rewards for fully correct and well-formatted completions after zero_warmup_steps; independent of the down-weighting mask.
+Overrides: per-problem overrides can toggle mask_format and adjust format_weight for specific task types.
+
+
+TODO  --- top 10 baselines
+# 3) Aggregate 30-task summaries
+python validation/analyze_results.py \
+  --results validation/results_30_chat_top10.csv \
+  --out-dir validation
+
+
+  re-do the best baseline
+  
+  python validation/analyze_results.py \
+  --results validation/results_30_chat_top10.csv \
+  --out-dir validation
+
+  python validation/plot_30_suite.py \
+  --models baseline_nomask_L512 \
+          cont_fullzero_everyN_t09_seed1_science2_cont_suite \
+          phase_split_masking_len512_seed1_science2_phase_adapt_suite \
+  --out-dir validation/plots_consistent_baseline
