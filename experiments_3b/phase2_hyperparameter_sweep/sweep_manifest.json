@@ -1,0 +1,572 @@
+{
+  "sweep_name": "3b_hyperparameter_optimization",
+  "total_configs": 48,
+  "continuous_configs": 16,
+  "phase_adapt_configs": 32,
+  "seeds": [
+    0,
+    1
+  ],
+  "configs": [
+    {
+      "config_id": 0,
+      "method": "continuous",
+      "file": "configs/continuous_000.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 1,
+      "method": "continuous",
+      "file": "configs/continuous_001.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 2,
+      "method": "continuous",
+      "file": "configs/continuous_002.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 3,
+      "method": "continuous",
+      "file": "configs/continuous_003.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 4,
+      "method": "continuous",
+      "file": "configs/continuous_004.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 5,
+      "method": "continuous",
+      "file": "configs/continuous_005.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 6,
+      "method": "continuous",
+      "file": "configs/continuous_006.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 7,
+      "method": "continuous",
+      "file": "configs/continuous_007.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 8,
+      "method": "continuous",
+      "file": "configs/continuous_008.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 9,
+      "method": "continuous",
+      "file": "configs/continuous_009.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 10,
+      "method": "continuous",
+      "file": "configs/continuous_010.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 11,
+      "method": "continuous",
+      "file": "configs/continuous_011.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 12,
+      "method": "continuous",
+      "file": "configs/continuous_012.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 13,
+      "method": "continuous",
+      "file": "configs/continuous_013.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 14,
+      "method": "continuous",
+      "file": "configs/continuous_014.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 15,
+      "method": "continuous",
+      "file": "configs/continuous_015.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 100,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_100.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 101,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_101.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 102,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_102.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 103,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_103.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 104,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_104.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 105,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_105.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 106,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_106.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 107,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_107.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 108,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_108.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 109,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_109.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 110,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_110.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 111,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_111.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 112,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_112.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 113,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_113.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 114,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_114.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 115,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_115.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 116,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_116.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 117,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_117.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 118,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_118.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 119,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_119.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 120,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_120.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 121,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_121.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 122,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_122.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 123,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_123.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 124,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_124.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 125,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_125.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 126,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_126.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 127,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_127.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 128,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_128.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 129,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_129.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 130,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_130.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 131,
+      "method": "phase_adapt",
+      "file": "configs/phase_adapt_131.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+suite,variant,length,n_runs,avg_pass_at_1,avg_format
+continuous,cont_fullzero_prob_t09,512,1,32.0,0.324
+continuous,cont_softmask_light,512,1,28.12,0.258
+continuous,cont_softmask_prob_p,512,1,33.96,0.389
+continuous,cont_softmask_roundrobin,512,1,31.28,0.329
+phase_adapt,phase_adapt_diversity,512,2,28.48,0.304
+phase_adapt,phase_adapt_diversity,1024,2,30.74,0.367
+phase_adapt,phase_adapt_softmask,512,2,26.6,0.378
+phase_adapt,phase_adapt_softmask,1024,2,27.36,0.372
+phase_adapt,phase_split_masking,512,2,31.54,0.391
+phase_adapt,phase_split_masking,1024,2,28.58,0.395
+science2_baseline,baseline_nomask,512,2,37.48,0.377
+science2_baseline,fullzero_every10_nothresh,512,2,31.88,0.278
+science2_baseline,softmask_every10_wt05,512,2,34.32,0.343

@@ -1,0 +1,7 @@
+Model,Method,Overall (%),Best Task (%),Worst Task (%),Solved Tasks,Tasks > 50%
+3B,Baseline,26.20 ± 0.92,59.46,0.00,9,2
+3B,Continuous,25.18 ± 0.10,58.39,0.00,9,2
+3B,Phase Adapt,21.36 ± 0.84,58.75,0.00,9,1
+7B,Baseline,37.48 ± 0.88,80.01,0.00,9,4
+7B,Continuous,34.32 ± 1.48,67.11,0.00,9,4
+7B,Phase Adapt,30.36 ± 0.00,62.07,0.00,9,3

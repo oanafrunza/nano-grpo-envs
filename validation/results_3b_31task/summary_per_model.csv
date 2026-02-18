@@ -1,0 +1,4 @@
+model,n,pass1_mean,format_ok_mean
+baseline_3b_seed0,3100,0.1542,0.8545
+continuous_3b_seed0,3100,0.1200,0.7752
+phase_adapt_3b_seed1,3100,0.1219,0.8700

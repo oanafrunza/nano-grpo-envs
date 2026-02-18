@@ -1,0 +1,156 @@
+{
+  "sweep_name": "3b_hyperparameter_optimization",
+  "description": "Optimize masking/zeroing hyperparameters specifically for Qwen2.5-3B capacity",
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "base_config": {
+    "task": "grpo",
+    "dataset_name": "validation/source_reasoning_gym_10.jsonl",
+    "learning_rate": 5e-7,
+    "per_device_train_batch_size": 4,
+    "gradient_accumulation_steps": 8,
+    "num_train_epochs": 2,
+    "output_dir_base": "exp_output/science2_3b_sweep",
+    "max_new_tokens": 512,
+    "temperature": 0.7,
+    "num_sample_generations": 16,
+    "save_strategy": "steps",
+    "save_steps": 500,
+    "save_total_limit": 1,
+    "load_best_model_at_end": true,
+    "metric_for_best_model": "eval_pass@1",
+    "greater_is_better": true,
+    "evaluation_strategy": "steps",
+    "eval_steps": 500,
+    "logging_steps": 10,
+    "beta": 0.04,
+    "use_peft": false,
+    "report_to": "wandb",
+    "wandb_project": "3b-grpo-sweep"
+  },
+  "sweep_grid": {
+    "continuous": {
+      "description": "Continuous masking without full-correct zeroing",
+      "parameters": {
+        "reward_mask_every_n": [10, 15, 20, 30],
+        "reward_mask_weight": [0.5, 0.7, 0.9],
+        "mask_warmup_steps": [200, 400, 600],
+        "full_correct_zero_strategy": ["disabled"]
+      },
+      "total_configs": 36,
+      "expected_runtime_per_seed": "~2-3 hours on 2 GPUs"
+    },
+    "phase_adapt": {
+      "description": "Phase-adaptive masking with late full-correct zeroing",
+      "parameters": {
+        "reward_mask_every_n": [10, 15, 20, 30],
+        "reward_mask_weight": [0.5, 0.7, 0.9],
+        "mask_warmup_steps": [200, 400],
+        "zero_warmup_steps": [400, 600, 800],
+        "full_correct_zero_strategy": ["late"]
+      },
+      "total_configs": 72,
+      "expected_runtime_per_seed": "~2-3 hours on 2 GPUs"
+    }
+  },
+  "reduced_grid": {
+    "description": "Reduced sweep focusing on most promising parameter ranges",
+    "continuous": {
+      "parameters": {
+        "reward_mask_every_n": [10, 20],
+        "reward_mask_weight": [0.7, 0.9],
+        "mask_warmup_steps": [200, 400],
+        "full_correct_zero_strategy": ["disabled"]
+      },
+      "total_configs": 8,
+      "expected_runtime": "~16-24 hours (8 configs × 2 seeds)"
+    },
+    "phase_adapt": {
+      "parameters": {
+        "reward_mask_every_n": [10, 20],
+        "reward_mask_weight": [0.7, 0.9],
+        "mask_warmup_steps": [200, 400],
+        "zero_warmup_steps": [400, 600],
+        "full_correct_zero_strategy": ["late"]
+      },
+      "total_configs": 16,
+      "expected_runtime": "~32-48 hours (16 configs × 2 seeds)"
+    },
+    "total_experiments": 48,
+    "estimated_total_time": "48-72 hours (with parallel GPU allocation)"
+  },
+  "seeds": [0, 1],
+  "evaluation": {
+    "in_distribution": {
+      "dataset": "validation/source_reasoning_gym_10.jsonl",
+      "tasks": 10,
+      "examples": 2000,
+      "description": "Same distribution as training"
+    },
+    "ood": {
+      "dataset": "validation/source_reasoning_gym_30.jsonl",
+      "tasks": 31,
+      "examples": 3100,
+      "splits": {
+        "core": 2000,
+        "stretch": 1100
+      },
+      "description": "Out-of-distribution generalization test"
+    }
+  },
+  "success_criteria": {
+    "primary": "Continuous/Phase-Adapt match or exceed baseline (26.2%) on 10-task eval",
+    "secondary": "Maintain or improve stretch task performance (current best: 10.64%)",
+    "stability": "Achieve <2% relative seed variation (current continuous: 0.8%)",
+    "generalization": "Reduce core→stretch gap below current -2.41%"
+  },
+  "hypotheses": [
+    "More aggressive masking (every_n=10) will improve continuous/phase-adapt vs baseline",
+    "Higher masking weight (0.9) will provide stronger regularization for 3B capacity",
+    "Earlier warmup (200 steps) will enable faster adaptation in smaller model",
+    "Optimal 3B hyperparameters will differ from 7B due to capacity differences"
+  ],
+  "baseline_reference": {
+    "method": "baseline",
+    "performance": {
+      "10_tasks": 26.2,
+      "31_tasks_overall": 15.42,
+      "31_tasks_core": 19.35,
+      "31_tasks_stretch": 8.27
+    },
+    "seed_variation": "6.8%"
+  },
+  "current_best": {
+    "continuous": {
+      "config": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 400
+      },
+      "performance": {
+        "10_tasks": 25.2,
+        "31_tasks_stretch": 8.18
+      },
+      "seed_variation": "0.8%"
+    },
+    "phase_adapt": {
+      "config": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600
+      },
+      "performance": {
+        "10_tasks": 21.4,
+        "31_tasks_stretch": 10.64
+      },
+      "seed_variation": "8.2%"
+    }
+  },
+  "computational_requirements": {
+    "gpus_per_job": 2,
+    "memory_per_gpu": "40GB+",
+    "max_concurrent_jobs": 4,
+    "total_gpu_hours": "96-144 (reduced grid)",
+    "recommended_batch_system": "SLURM array jobs"
+  }
+}

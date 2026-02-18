@@ -1,0 +1,7 @@
+model,split,n,pass1_mean,format_ok_mean
+baseline_3b_seed0,core,2000,0.1935,0.8620
+baseline_3b_seed0,stretch,1100,0.0827,0.8409
+continuous_3b_seed0,core,2000,0.1410,0.7600
+continuous_3b_seed0,stretch,1100,0.0818,0.8027
+phase_adapt_3b_seed1,core,2000,0.1305,0.8900
+phase_adapt_3b_seed1,stretch,1100,0.1064,0.8336

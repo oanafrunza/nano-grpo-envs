@@ -1,0 +1,202 @@
+{
+  "sweep_name": "3b_hyperparameter_optimization_reduced",
+  "description": "Reduced sweep focusing on most promising configs (aggressive masking + baseline)",
+  "total_configs": 16,
+  "continuous_configs": 8,
+  "phase_adapt_configs": 8,
+  "seeds": [
+    0,
+    1
+  ],
+  "configs": [
+    {
+      "config_id": 0,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_000.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 1,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_001.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 2,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_002.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 3,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_003.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "warmup": 200,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 4,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_004.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 5,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_005.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 6,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_006.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 7,
+      "method": "continuous",
+      "file": "configs_reduced/continuous_007.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 100,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_100.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 101,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_101.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.9,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 102,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_102.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 103,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_103.json",
+      "params": {
+        "every_n": 10,
+        "weight": 0.7,
+        "mask_warmup": 200,
+        "zero_warmup": 400,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 104,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_104.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 105,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_105.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.9,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    },
+    {
+      "config_id": 106,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_106.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 0
+      }
+    },
+    {
+      "config_id": 107,
+      "method": "phase_adapt",
+      "file": "configs_reduced/phase_adapt_107.json",
+      "params": {
+        "every_n": 20,
+        "weight": 0.7,
+        "mask_warmup": 400,
+        "zero_warmup": 600,
+        "seed": 1
+      }
+    }
+  ],
+  "rationale": {
+    "aggressive": "Test if 3B needs more aggressive masking (every_n=10, weight=0.9, warmup=200)",
+    "baseline": "Compare against 7B-optimized settings (every_n=20, weight=0.7, warmup=400)",
+    "reduction": "Reduced from 48 to 16 experiments (67% reduction) to conserve GPUs"
+  }
+}

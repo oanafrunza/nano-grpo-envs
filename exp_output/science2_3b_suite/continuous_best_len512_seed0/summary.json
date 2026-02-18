@@ -1,0 +1,58 @@
+{
+  "step": 900,
+  "pass_at_k": 25.28,
+  "avg_format_reward": 0.3216000000000018,
+  "num_eval_problems": 500,
+  "per_problem_type": {
+    "number_sequence": {
+      "pass_at_1": 53.84615384615385,
+      "avg_format_reward": 0.397948717948718,
+      "num_problems": 39
+    },
+    "palindrome_generation": {
+      "pass_at_1": 10.0,
+      "avg_format_reward": 0.30814814814814817,
+      "num_problems": 54
+    },
+    "propositional_logic": {
+      "pass_at_1": 55.00000000000001,
+      "avg_format_reward": 0.39,
+      "num_problems": 56
+    },
+    "leg_counting": {
+      "pass_at_1": 11.304347826086957,
+      "avg_format_reward": 0.4,
+      "num_problems": 46
+    },
+    "simple_geometry": {
+      "pass_at_1": 13.999999999999998,
+      "avg_format_reward": 0.394,
+      "num_problems": 40
+    },
+    "maze": {
+      "pass_at_1": 10.909090909090907,
+      "avg_format_reward": 0.38181818181818183,
+      "num_problems": 44
+    },
+    "family_relationships": {
+      "pass_at_1": 46.07142857142858,
+      "avg_format_reward": 0.01,
+      "num_problems": 56
+    },
+    "bf": {
+      "pass_at_1": 0.0,
+      "avg_format_reward": 0.2007843137254902,
+      "num_problems": 51
+    },
+    "sokoban": {
+      "pass_at_1": 0.7142857142857141,
+      "avg_format_reward": 0.39,
+      "num_problems": 56
+    },
+    "polynomial_equations": {
+      "pass_at_1": 47.241379310344826,
+      "avg_format_reward": 0.4,
+      "num_problems": 58
+    }
+  }
+}
