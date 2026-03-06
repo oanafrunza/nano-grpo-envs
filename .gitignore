@@ -215,3 +215,7 @@ logs/*.out
 logs/*.err
 slurm-*.out
 wandb/
+
+# Experiment outputs (large checkpoint files)
+exp_output/
+*.completed
