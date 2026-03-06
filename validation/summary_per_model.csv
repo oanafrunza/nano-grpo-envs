@@ -1,0 +1,12 @@
+model,n,pass1_mean,format_ok_mean
+cont_fullzero_everyN_t09_seed1_science2_cont_suite,3100,0.1690,0.8452
+phase_split_masking_len512_seed1_science2_phase_adapt_suite,3100,0.1797,0.9919
+cont_softmask_prob_p_seed1_science2_cont_suite,3100,0.1687,0.8981
+phase_adapt_diversity_seed2_science2_phase_adapt_suite,3100,0.1687,0.9794
+cont_fullzero_prob_t09_seed1_science2_cont_suite,3100,0.1481,0.8297
+phase_split_masking_seed1_science2_phase_adapt_suite,3100,0.1245,0.9852
+cont_softmask_roundrobin_seed1_science2_cont_suite,3100,0.1510,0.8471
+phase_adapt_diversity_len512_seed2_science2_phase_adapt_suite,3100,0.1081,0.9645
+phase_adapt_softmask_seed2_science2_phase_adapt_suite,3100,0.1632,0.8132
+phase_adapt_diversity_seed1_science2_phase_adapt_suite,3100,0.1413,0.9768
+baseline_nomask_L512,3100,0.1623,0.6835

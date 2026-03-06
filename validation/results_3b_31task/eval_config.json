@@ -1,0 +1,25 @@
+{
+  "models": [
+    {
+      "name": "baseline_3b_seed0",
+      "checkpoint": "exp_output/science2_3b_suite/baseline_len512_seed0/checkpoint_final"
+    }
+,
+    {
+      "name": "continuous_3b_seed0",
+      "checkpoint": "exp_output/science2_3b_suite/continuous_best_len512_seed0/checkpoint_final"
+    }
+,
+    {
+      "name": "phase_adapt_3b_seed1",
+      "checkpoint": "exp_output/science2_3b_suite/phase_adapt_best_len512_seed1/checkpoint_final"
+    }
+
+  ],
+  "evaluation": {
+    "max_new_tokens": 512,
+    "temperature": 0.0,
+    "format_checker": "regex",
+    "regex_pattern": "<answer>.*</answer>"
+  }
+}

@@ -1,0 +1,32 @@
+task,winners,winning_score,baseline_nomask_L512,cont_softmask_prob_p_L512,phase_split_masking_L512
+advanced_geometry,cont_softmask_prob_p_L512,0.0700,0.0000,0.0700,0.0000
+binary_matrix,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+circuit_logic,phase_split_masking_L512,0.4000,0.3300,0.3400,0.4000
+codeio,phase_split_masking_L512,0.0100,0.0000,0.0000,0.0100
+complex_arithmetic,"baseline_nomask_L512, cont_softmask_prob_p_L512",0.7400,0.7400,0.7400,0.7000
+course_schedule,phase_split_masking_L512,0.5400,0.3800,0.5100,0.5400
+decimal_arithmetic,cont_softmask_prob_p_L512,0.1900,0.1700,0.1900,0.1500
+figlet_font,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+fraction_simplification,baseline_nomask_L512,0.0500,0.0500,0.0300,0.0200
+gcd,phase_split_masking_L512,0.8600,0.7900,0.8300,0.8600
+graph_color,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+group_anagrams,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+knights_knaves,baseline_nomask_L512,0.1500,0.1500,0.0900,0.0100
+largest_island,baseline_nomask_L512,0.2400,0.2400,0.2100,0.2200
+mini_sudoku,phase_split_masking_L512,0.0400,0.0300,0.0100,0.0400
+modulo_grid,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+n_queens,baseline_nomask_L512,0.0100,0.0100,0.0000,0.0000
+palindrome_partitioning,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+polynomial_multiplication,phase_split_masking_L512,0.2100,0.0800,0.1400,0.2100
+prime_factorization,baseline_nomask_L512,0.4000,0.4000,0.3500,0.3300
+rectangle_count,phase_split_masking_L512,0.0600,0.0300,0.0300,0.0600
+rotate_matrix,phase_split_masking_L512,0.1500,0.0800,0.0500,0.1500
+rush_hour,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+sentence_reordering,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+shortest_path,"baseline_nomask_L512, cont_softmask_prob_p_L512",0.0100,0.0100,0.0100,0.0000
+simple_equations,phase_split_masking_L512,0.5400,0.5100,0.4500,0.5400
+simple_integration,phase_split_masking_L512,0.3000,0.1200,0.2000,0.3000
+spiral_matrix,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
+string_synthesis,baseline_nomask_L512,0.0400,0.0400,0.0200,0.0000
+time_intervals,cont_softmask_prob_p_L512,0.1400,0.1200,0.1400,0.1100
+word_ladder,"baseline_nomask_L512, cont_softmask_prob_p_L512, phase_split_masking_L512",0.0000,0.0000,0.0000,0.0000
